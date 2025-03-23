@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.individualassignment_72.ui.theme.IndividualAssignment_72Theme
 
@@ -53,7 +54,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MakeSearch(searchState: AccountViewModel.SearchState,
-               currentResults: SnapshotStateList<Repo>,
+               //currentResults: SnapshotStateList<Repo>,
+               viewModel: AccountViewModel,
                onSuccess: ()->Unit,
                onEndOfResults: ()->Unit,
                perPage: Int){
@@ -64,13 +66,16 @@ fun MakeSearch(searchState: AccountViewModel.SearchState,
         }
 
         is AccountViewModel.SearchState.Success -> {
-            val searchResult =
-                (searchState as AccountViewModel.SearchState.Success).accountInfo
-            currentResults.addAll(searchResult)
+            val searchResult = (searchState as AccountViewModel.SearchState.Success).accountInfo
+            if(!viewModel.currentResults.containsAll(searchResult)) {
+                viewModel.currentResults.addAll(searchResult)
+            }
 //                    Text("User " + searchResult[0].owner.login + " found!")
 //                    Text("First repo found is called: ${searchResult[0].name}")
             onSuccess()
-            if(searchResult.size < perPage){onEndOfResults()}
+            if(searchResult.size < perPage){
+                onEndOfResults()
+            }
         }
 
         is AccountViewModel.SearchState.Error -> {
@@ -90,8 +95,6 @@ fun GitSearchScreen(viewModel: AccountViewModel = viewModel()) {
     var page by rememberSaveable { mutableStateOf(1)}
     var displayResults by rememberSaveable { mutableStateOf(false) }
     var endOfResults by rememberSaveable { mutableStateOf(false) }
-
-    var currentResults = remember { mutableStateListOf<Repo>() }
     val scrollState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
 
     Scaffold() { innerPadding ->
@@ -109,7 +112,7 @@ fun GitSearchScreen(viewModel: AccountViewModel = viewModel()) {
                 if (login.isNotEmpty()) {
                     displayResults = false
                     endOfResults = false
-                    currentResults.clear()
+                    viewModel.currentResults.clear()
                     page = 1
                     searchedLogin = login
                     viewModel.fetchUser(searchedLogin, page, perPage)
@@ -117,9 +120,10 @@ fun GitSearchScreen(viewModel: AccountViewModel = viewModel()) {
             }) {
                 Text("Get Repos", fontSize = 20.sp)
             }
+
             MakeSearch(
                 searchState,
-                currentResults,
+                viewModel,
                 { displayResults = true },
                 { endOfResults = true },
                 perPage
@@ -127,7 +131,7 @@ fun GitSearchScreen(viewModel: AccountViewModel = viewModel()) {
             if(displayResults) {
                 DisplayResults(
                     searchedLogin,
-                    currentResults,
+                    viewModel,
                     {
                         page++
                         viewModel.fetchUser(searchedLogin, page, perPage)
@@ -143,11 +147,12 @@ fun GitSearchScreen(viewModel: AccountViewModel = viewModel()) {
 @Composable
 fun DisplayResults(
     login: String,
-    repos: List<Repo>,
+    viewModel: AccountViewModel,
     loadMore: ()->Unit,
     scrollState: LazyListState,
     endOfResults: Boolean
     ) {
+    val repos = viewModel.currentResults
     Column(){
         Text(
             text = login,

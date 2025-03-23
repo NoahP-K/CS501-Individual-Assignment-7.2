@@ -11,6 +11,8 @@ class AccountViewModel : ViewModel() {
     private val _searchState = MutableStateFlow<SearchState>(SearchState.Initial)
     val searchState: StateFlow<SearchState> = _searchState
 
+    val currentResults = mutableListOf<Repo>()
+
     fun fetchUser(name: String, offset: Int, limit: Int) {
         viewModelScope.launch {
             _searchState.value = SearchState.Loading
